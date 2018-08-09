@@ -2,7 +2,7 @@ import tensorflow as tf
 import numpy as np
 from data.Data_deal import DataDealSeq
 # from model import embedding, encoder_decoder, loss, encoder, decoder, decoder_1
-from modules import embedding,positional_encoding,multihead_attention,feedforward,label_smoothing
+from modules import embedding, positional_encoding, multihead_attention, feedforward, label_smoothing
 from nltk import bleu
 import os
 
@@ -34,10 +34,11 @@ class Config(object):
     use_sample = False
     beam_size = 168
     use_MMI = False
-    sinusoid=False
-    dropout=0.01
+    sinusoid = False
+    dropout = 0.01
     num_heads = 8
     num_blocks = 6
+
 
 config = Config()
 tf.app.flags.DEFINE_float("learning_rate", config.learning_rate, "学习率")
@@ -87,92 +88,92 @@ class Seq2SeqRl(object):
 
             self.decoder_label = tf.placeholder(shape=(None, FLAGS.decoder_len), dtype=tf.int32, name='decoder_label')
 
-
             with tf.variable_scope(name_or_scope='encoder'):
                 self.encoder_input_emb = embedding(self.encoder_input,
-                                     vocab_size=self.decoder_word_num,
-                                     num_units=FLAGS.hidden_dim,
-                                     scale=True,
-                                     scope="enc_embed")
+                                                   vocab_size=self.decoder_word_num,
+                                                   num_units=FLAGS.hidden_dim,
+                                                   scale=True,
+                                                   scope="enc_embed")
 
                 ## Positional Encoding
                 if config.sinusoid:
                     self.encoder_input_emb += positional_encoding(self.encoder_input,
-                                      num_units=FLAGS.hidden_dim,
-                                      zero_pad=False,
-                                      scale=False,
-                                      scope="enc_pe")
+                                                                  num_units=FLAGS.hidden_dim,
+                                                                  zero_pad=False,
+                                                                  scale=False,
+                                                                  scope="enc_pe")
                 else:
-                    self.encoder_input_emb += embedding(tf.tile(tf.expand_dims(tf.range(tf.shape(self.encoder_input)[1]), 0), [tf.shape(self.encoder_input)[0], 1]),
-                                      vocab_size=FLAGS.encoder_len,
-                                      num_units=FLAGS.hidden_dim,
-                                      zero_pad=False,
-                                      scale=False,
-                                      scope="enc_pe")
-
+                    self.encoder_input_emb += embedding(
+                        tf.tile(tf.expand_dims(tf.range(tf.shape(self.encoder_input)[1]), 0),
+                                [tf.shape(self.encoder_input)[0], 1]),
+                        vocab_size=FLAGS.encoder_len,
+                        num_units=FLAGS.hidden_dim,
+                        zero_pad=False,
+                        scale=False,
+                        scope="enc_pe")
 
                 ## Dropout
                 self.encoder_input_emb = tf.layers.dropout(self.encoder_input_emb,
-                                            rate=FLAGS.keep_dropout,
-                                            training=True)
+                                                           rate=FLAGS.keep_dropout,
+                                                           training=True)
 
                 # Blocks
-                self.enc=self.encoder_input_emb
+                self.enc = self.encoder_input_emb
                 for i in range(config.num_blocks):
                     with tf.variable_scope("num_blocks_{}".format(i)):
                         ### Multihead Attention
                         self.enc = multihead_attention(queries=self.enc,
-                                                        keys=self.enc,
-                                                        num_units=FLAGS.hidden_dim,
-                                                        num_heads=config.num_heads,
-                                                        dropout_rate=config.dropout,
-                                                        is_training=True,
-                                                        causality=False)
+                                                       keys=self.enc,
+                                                       num_units=FLAGS.hidden_dim,
+                                                       num_heads=config.num_heads,
+                                                       dropout_rate=config.dropout,
+                                                       is_training=True,
+                                                       causality=False)
 
                         ### Feed Forward
-                        self.enc = feedforward(self.enc, num_units=[4*FLAGS.hidden_dim, FLAGS.hidden_dim])
+                        self.enc = feedforward(self.enc, num_units=[4 * FLAGS.hidden_dim, FLAGS.hidden_dim])
 
             with tf.variable_scope(name_or_scope='decoder'):
                 self.decoder_input_emb = embedding(self.decoder_input,
-                                     vocab_size=self.decoder_word_num,
-                                     num_units=FLAGS.hidden_dim,
-                                     scale=True,
-                                     scope="enc_embed")
+                                                   vocab_size=self.decoder_word_num,
+                                                   num_units=FLAGS.hidden_dim,
+                                                   scale=True,
+                                                   scope="enc_embed")
 
                 ## Positional Encoding
                 if config.sinusoid:
                     self.decoder_input_emb += positional_encoding(self.decoder_input,
-                                      num_units=FLAGS.hidden_dim,
-                                      zero_pad=False,
-                                      scale=False,
-                                      scope="enc_pe")
+                                                                  num_units=FLAGS.hidden_dim,
+                                                                  zero_pad=False,
+                                                                  scale=False,
+                                                                  scope="enc_pe")
                 else:
-                    self.decoder_input_emb += embedding(tf.tile(tf.expand_dims(tf.range(tf.shape(self.decoder_input)[1]), 0), [tf.shape(self.decoder_input)[0], 1]),
-                                      vocab_size=FLAGS.decoder_len,
-                                      num_units=FLAGS.hidden_dim,
-                                      zero_pad=False,
-                                      scale=False,
-                                      scope="enc_pe")
-
+                    self.decoder_input_emb += embedding(
+                        tf.tile(tf.expand_dims(tf.range(tf.shape(self.decoder_input)[1]), 0),
+                                [tf.shape(self.decoder_input)[0], 1]),
+                        vocab_size=FLAGS.decoder_len,
+                        num_units=FLAGS.hidden_dim,
+                        zero_pad=False,
+                        scale=False,
+                        scope="enc_pe")
 
                 ## Dropout
                 self.decoder_input_emb = tf.layers.dropout(self.decoder_input_emb,
-                                            rate=FLAGS.keep_dropout,
-                                            training=True)
-
+                                                           rate=FLAGS.keep_dropout,
+                                                           training=True)
 
                 # Blocks
-                self.dec=self.decoder_input_emb
+                self.dec = self.decoder_input_emb
                 for i in range(config.num_blocks):
                     with tf.variable_scope("num_blocks_{}".format(i)):
                         ### Multihead Attention
                         self.dec = multihead_attention(queries=self.dec,
-                                                        keys=self.dec,
-                                                        num_units=FLAGS.hidden_dim,
-                                                        num_heads=config.num_heads,
-                                                        dropout_rate=config.dropout,
-                                                        is_training=True,
-                                                        causality=False,
+                                                       keys=self.dec,
+                                                       num_units=FLAGS.hidden_dim,
+                                                       num_heads=config.num_heads,
+                                                       dropout_rate=config.dropout,
+                                                       is_training=True,
+                                                       causality=False,
                                                        scope='self_attention'
                                                        )
 
@@ -185,10 +186,10 @@ class Seq2SeqRl(object):
                                                        causality=False,
                                                        scope='vanilla_attention')
                         ### Feed Forward
-                        self.dec = feedforward(self.dec, num_units=[4*FLAGS.hidden_dim, FLAGS.hidden_dim])
-            dec=tf.layers.dense(self.dec,self.decoder_word_num)
+                        self.dec = feedforward(self.dec, num_units=[4 * FLAGS.hidden_dim, FLAGS.hidden_dim])
+            dec = tf.layers.dense(self.dec, self.decoder_word_num)
             self.soft_logit = tf.nn.log_softmax(dec)
-
+            print(self.soft_logit)
             self.preds = tf.to_int32(tf.arg_max(self.soft_logit, dimension=-1))
 
             self.istarget = tf.to_float(tf.not_equal(self.decoder_label, 0))
@@ -200,11 +201,11 @@ class Seq2SeqRl(object):
             #                  decoder_len=FLAGS.decoder_len, decoder_mask=self.decoder_mask)
 
             self.y_smoothed = label_smoothing(tf.one_hot(self.decoder_label, depth=self.decoder_word_num))
-            self.loss=tf.nn.softmax_cross_entropy_with_logits(logits=self.soft_logit,labels=self.y_smoothed)
+            self.loss = tf.nn.softmax_cross_entropy_with_logits(logits=self.soft_logit, labels=self.y_smoothed)
             self.mean_loss = tf.reduce_sum(self.loss * self.istarget) / (tf.reduce_sum(self.istarget))
             # self.loss = tf.losses.softmax_cross_entropy(self.decoder_label,self.dec)
-            self.opt = tf.train.AdamOptimizer(FLAGS.learning_rate,beta1=0.9, beta2=0.98, epsilon=1e-8).minimize(self.mean_loss)
-
+            self.opt = tf.train.AdamOptimizer(FLAGS.learning_rate, beta1=0.9, beta2=0.98, epsilon=1e-8).minimize(
+                self.mean_loss)
 
     def train(self, dd):
 
@@ -212,7 +213,7 @@ class Seq2SeqRl(object):
         saver = tf.train.Saver()
 
         with tf.Session(config=config) as sess:
-            #saver.restore(sess,'%s'%FLAGS.model_dir)
+            # saver.restore(sess,'%s'%FLAGS.model_dir)
             sess.run(tf.global_variables_initializer())
             #
             # decoder_input, decoder_label, encoder_input, decoder_len, encoder_len, _ = dd.next_batch()
@@ -236,16 +237,18 @@ class Seq2SeqRl(object):
                     decoder_len = result_content_len_list[j * FLAGS.batch_size:(j + 1) * FLAGS.batch_size]
                     encoder_len = result_title_len_list[j * FLAGS.batch_size:(j + 1) * FLAGS.batch_size]
 
+                    decoder_input = np.zeros_like(decoder_input)
+                    decoder_input[:, 0] = 1
                     decoder_mask = np.zeros_like(decoder_input)
                     for index, e in enumerate(decoder_len):
                         decoder_mask[index][:e + 1] = 1
-                    losses, soft_logit, _,acc = sess.run([self.mean_loss, self.soft_logit, self.opt,self.acc],
-                                                     feed_dict={self.encoder_input: encoder_input,
-                                                                self.decoder_input: decoder_input,
-                                                                self.decoder_label: decoder_label,
-                                                                self.encoder_seq_len: encoder_len,
-                                                                self.decoder_seq_len: decoder_len,
-                                                                self.decoder_mask: decoder_mask})
+                    losses, soft_logit, _, acc = sess.run([self.mean_loss, self.soft_logit, self.opt, self.acc],
+                                                          feed_dict={self.encoder_input: encoder_input,
+                                                                     self.decoder_input: decoder_input,
+                                                                     self.decoder_label: decoder_label,
+                                                                     self.encoder_seq_len: encoder_len,
+                                                                     self.decoder_seq_len: decoder_len,
+                                                                     self.decoder_mask: decoder_mask})
                     train_acc += acc
                     all_loss += losses
                 #                 all_loss=all_loss/float(num_batch)
@@ -256,6 +259,9 @@ class Seq2SeqRl(object):
                 test_decoder_mask = np.zeros_like(test_decoder_input)
                 for index, e in enumerate(test_decoder_len):
                     test_decoder_mask[index][:e + 1] = 1
+
+                test_decoder_input = np.zeros_like(test_decoder_input)
+                test_decoder_input[:, 0] = 1
                 test_batch = 500
                 test_num = int(test_decoder_input.shape[0] / test_batch)
                 all_test_loss = 0.0
@@ -268,13 +274,14 @@ class Seq2SeqRl(object):
                     test_decoder_len_batch = test_decoder_len[ii * test_batch:(ii + 1) * test_batch]
                     test_decoder_mask_batch = test_decoder_mask[ii * test_batch:(ii + 1) * test_batch]
 
-                    test_losses, test_soft_logit,test_acc = sess.run([self.mean_loss, self.soft_logit,self.acc],
-                                                            feed_dict={self.encoder_input: test_encoder_input_batch,
-                                                                       self.decoder_input: test_decoder_input_batch,
-                                                                       self.decoder_label: test_decoder_label_batch,
-                                                                       self.encoder_seq_len: test_encoder_len_batch,
-                                                                       self.decoder_seq_len: test_decoder_len_batch,
-                                                                       self.decoder_mask: test_decoder_mask_batch})
+                    test_losses, test_soft_logit, test_acc = sess.run([self.mean_loss, self.soft_logit, self.acc],
+                                                                      feed_dict={
+                                                                          self.encoder_input: test_encoder_input_batch,
+                                                                          self.decoder_input: test_decoder_input_batch,
+                                                                          self.decoder_label: test_decoder_label_batch,
+                                                                          self.encoder_seq_len: test_encoder_len_batch,
+                                                                          self.decoder_seq_len: test_decoder_len_batch,
+                                                                          self.decoder_mask: test_decoder_mask_batch})
                     all_test_loss += test_losses
                     all_test_acc += test_acc
 
@@ -288,7 +295,7 @@ class Seq2SeqRl(object):
                                                                                              all_test_acc))
                 saver.save(sess, '%s' % FLAGS.model_dir)
 
-    def acc(self,pre, label):
+    def acc(self, pre, label):
 
         pre_index = np.argmax(pre, 2)
         acc = float(np.sum(np.equal(pre_index, label))) / float(label.shape[0] * label.shape[1])
@@ -298,11 +305,11 @@ class Seq2SeqRl(object):
         train_data, test_data = dd.get_train_data()
         result_content_input, result_content_decoder, result_content_len_list, result_title, result_title_len_list, result_loss_weight = train_data
 
-        decoder_input=result_content_input[:100]
-        decoder_label=result_content_decoder[:100]
-        encoder_input=result_title[:100]
-        decoder_len=result_content_len_list[:100]
-        encoder_len=result_title_len_list[:100]
+        decoder_input = result_content_input[:100]
+        decoder_label = result_content_decoder[:100]
+        encoder_input = result_title[:100]
+        decoder_len = result_content_len_list[:100]
+        encoder_len = result_title_len_list[:100]
 
         decoder_mask = np.zeros_like(decoder_input)
         for index, e in enumerate(decoder_len):
@@ -339,8 +346,7 @@ class Seq2SeqRl(object):
                 print('\n')
             print('belu socre %s' % (float(all_score) / float(len(encoder_input))))
 
-
-    def infer_(self,dd):
+    def infer_(self, dd):
 
         saver = tf.train.Saver()
         id2content = dd.id2content
@@ -350,12 +356,12 @@ class Seq2SeqRl(object):
             saver.restore(sess, '%s' % FLAGS.model_dir)
 
             while True:
-                sent=input('输入')
+                sent = input('输入')
 
-                encoder_input,_,decoder_input,encoder_len,_,_=dd.get_sent(
-                    sent)
-
-                outs = sess.run([self.soft_logit], feed_dict={
+                encoder_input, _, decoder_input, encoder_len, _, _ = dd.get_sent(sent)
+                decoder_input = np.zeros_like(decoder_input)
+                decoder_input[:, 0] = 1
+                outs = sess.run(self.soft_logit, feed_dict={
                     self.encoder_input: encoder_input,
                     self.decoder_input: decoder_input,
                     self.encoder_seq_len: encoder_len,
@@ -370,7 +376,7 @@ class Seq2SeqRl(object):
 
 
 def main(_):
-    dd = DataDealSeq(train_path="/train.txt", test_path="/test.txt",
+    dd = DataDealSeq(train_path="/train_sample.txt", test_path="/test.txt",
                      dev_path="/test.txt",
                      dim=FLAGS.hidden_dim, batch_size=FLAGS.batch_size, content_len=FLAGS.decoder_len,
                      title_len=FLAGS.encoder_len, flag="train_new")
