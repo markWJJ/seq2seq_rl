@@ -96,7 +96,7 @@ class Seq2SeqRl(object):
 
             if self.modd=='enc_dec':
                 self.outs=encoder_decoder(self.encoder_input,FLAGS.encoder_len,self.decoder_input,FLAGS.decoder_len,self.encoder_cell,FLAGS.hidden_dim,
-                                self.encoder_word_num,self.decoder_word_num,name='enc_dec',feed_previous=False)
+                                self.encoder_word_num,self.decoder_word_num,name='enc_dec',feed_previous=True)
 
             else:
                 encoder_out, encoder_states, encoder_state_tuple = encoder(self.encoder_emb, FLAGS.encoder_len,
@@ -111,7 +111,7 @@ class Seq2SeqRl(object):
                                       decoder_embedding=dec_emb, hidden_dim=FLAGS.hidden_dim,mod=FLAGS.mod)
 
 
-            self.soft_logit = tf.nn.softmax(self.outs, 2)
+            self.soft_logit = tf.nn.log_softmax(self.outs, 2)
             self.preds = tf.to_int32(tf.argmax(self.soft_logit,2))
 
 
@@ -167,8 +167,8 @@ class Seq2SeqRl(object):
                     decoder_len = result_content_len_list[j * FLAGS.batch_size:(j + 1) * FLAGS.batch_size]
                     encoder_len = result_title_len_list[j * FLAGS.batch_size:(j + 1) * FLAGS.batch_size]
 
-                    # decoder_input = np.zeros_like(decoder_input)
-                    # decoder_input[:, 0] = 1
+                    decoder_input = np.zeros_like(decoder_input)
+                    decoder_input[:, 0] = 1
 
                     decoder_mask = np.zeros_like(decoder_input)
                     for index, e in enumerate(decoder_len):
@@ -188,8 +188,8 @@ class Seq2SeqRl(object):
                 test_decoder_input, test_decoder_label, test_decoder_len, \
                 test_encoder_input, test_encoder_len, test_result_loss_weight = test_data
                 test_decoder_mask = np.zeros_like(test_decoder_input)
-                # test_decoder_input = np.zeros_like(test_decoder_input)
-                # test_decoder_input[:, 0] = 1
+                test_decoder_input = np.zeros_like(test_decoder_input)
+                test_decoder_input[:, 0] = 1
 
                 for index, e in enumerate(test_decoder_len):
                     test_decoder_mask[index][:e + 1] = 1
@@ -282,7 +282,7 @@ def main(_):
     dd = DataDealSeq(train_path="/train_sample.txt", test_path="/test.txt",
                      dev_path="/test.txt",
                      dim=FLAGS.hidden_dim, batch_size=FLAGS.batch_size, content_len=FLAGS.decoder_len,
-                     title_len=FLAGS.encoder_len, flag="train_new")
+                     title_len=FLAGS.encoder_len, flag="train_new",name='seq2seq')
 
     decoder_word_num = len(dd.content_vocab)
     encoder_word_num = len(dd.title_vocab)

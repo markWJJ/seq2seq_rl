@@ -6,7 +6,7 @@ from modules import embedding, positional_encoding, multihead_attention, feedfor
 from nltk import bleu
 import os
 
-gpu_id = 0
+gpu_id = 3
 
 os.environ["CUDA_VISIBLE_DEVICES"] = "%s" % gpu_id
 
@@ -379,7 +379,7 @@ def main(_):
     dd = DataDealSeq(train_path="/train_sample.txt", test_path="/test.txt",
                      dev_path="/test.txt",
                      dim=FLAGS.hidden_dim, batch_size=FLAGS.batch_size, content_len=FLAGS.decoder_len,
-                     title_len=FLAGS.encoder_len, flag="train_new")
+                     title_len=FLAGS.encoder_len, flag="train_new", name='trans')
 
     decoder_word_num = len(dd.content_vocab)
     encoder_word_num = len(dd.title_vocab)
